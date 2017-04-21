@@ -12,12 +12,13 @@ LEARNING_RATE = 0.1
 LEARNING_RATE_DECAY=0.1
 NUM_GENS_TO_WAIT=250.0
 
-TRAINING_ITERATIONS = 60000
-DROPOUT = 0.8
+TRAINING_ITERATIONS = 30000
+DROPOUT = 0.5
 BATCH_SIZE = 500
 VALIDATION_SIZE = 0
 IMAGE_TO_DISPLAY = 10
 
+#with open('../data/CIFAR10/batches.meta',mode='rb') as file:
 with open('data/batches.meta',mode='rb') as file:
 	batch=pickle.load(file,encoding='latin1')
 label_names=batch['label_names']
@@ -33,6 +34,7 @@ def load_cifar10data(filename):
 x_train=np.zeros(shape=(0,32,32,3))
 train_labels=[]
 for i in range(1,NUM_FILE_BATCHES+1):
+	#ft,lb=load_cifar10data('../data/CIFAR10/data_batch_'+str(i))
 	ft,lb=load_cifar10data('data/data_batch_'+str(i))
 	x_train=np.vstack((x_train,ft))
 	train_labels.extend(lb)
@@ -43,7 +45,8 @@ lb=preprocessing.LabelBinarizer()
 lb.fit(unique_labels)
 y_train=lb.transform(train_labels)
 
-x_test,test_labels=load_cifar10data('data/test_batch')
+#x_test,test_labels=load_cifar10data('../data/CIFAR10/test_batch')
+x_test_data,test_labels=load_cifar10data('data/test_batch')
 y_test=lb.transform(test_labels)
 
 #---------------------------------------------------
@@ -51,15 +54,15 @@ y_test=lb.transform(test_labels)
 #max_value=np.amax(x_train)
 #x_train=(x_train-min_value)/(max_value-min_value)
 #x_test=(x_test-min_value)/(max_value-min_value)
-mean=np.mean(x_train)
-stddev=np.std(x_train)
+#mean=np.mean(x_train)
+#stddev=np.std(x_train)
 #x_train=(x_train-mean)/stddev
-x_test=(x_test-mean)/stddev
+#x_test=(x_test-mean)/stddev
 #---------------------------------------------------
 
 def updateImage(x_train_data,distort=True):
-	global mean
-	global stddev
+	#global mean
+	#global stddev
 	x_temp=x_train_data.copy()
 	x_output=np.zeros(shape=(0,32,32,3))
 	for i in range(0,x_temp.shape[0]):
@@ -71,19 +74,23 @@ def updateImage(x_train_data,distort=True):
 			temp=temp+brightness
 			contrast=random.uniform(0.2,1.8)
 			temp=temp*contrast
+		mean=np.mean(temp)
+		stddev=np.std(temp)
 		temp=(temp-mean)/stddev
 		temp=np.expand_dims(temp,axis=0)
 		x_output=np.append(x_output,temp,axis=0)
 	return x_output
+
+x_test=updateImage(x_test_data,False)
 
 def truncated_normal_var(name, shape, dtype):
 	return(tf.get_variable(name=name, shape=shape, dtype=dtype, initializer=tf.truncated_normal_initializer(stddev=0.05)))
 def zero_var(name, shape, dtype):
 	return(tf.get_variable(name=name, shape=shape, dtype=dtype, initializer=tf.constant_initializer(0.0)))
 
-x=tf.placeholder(tf.float32,shape=[None,x_train.shape[1],x_train.shape[2],x_train.shape[3]])
-labels=tf.placeholder(tf.float32,shape=[None,y_train.shape[1]])
-keep_prob=tf.placeholder(tf.float32)
+x=tf.placeholder(tf.float32,shape=[None,x_train.shape[1],x_train.shape[2],x_train.shape[3]],name='x')
+labels=tf.placeholder(tf.float32,shape=[None,y_train.shape[1]],name='labels')
+keep_prob=tf.placeholder(tf.float32,name='keep_prob')
 
 with tf.variable_scope('conv1') as scope:
 	conv1_kernel=truncated_normal_var(name='conv1_kernel',shape=[5,5,3,64],dtype=tf.float32)
@@ -96,7 +103,8 @@ with tf.variable_scope('conv1') as scope:
 pool_size=[1,3,3,1]
 strides=[1,2,2,1]
 pool1=tf.nn.max_pool(relu_conv1,ksize=pool_size,strides=strides,padding='SAME',name='pool_layer1')
-norm1=tf.nn.lrn(pool1,depth_radius=5,bias=2.0,alpha=1e-3,beta=0.75,name='norm1')
+#norm1=tf.nn.lrn(pool1,depth_radius=5,bias=2.0,alpha=1e-3,beta=0.75,name='norm1')
+norm1=tf.nn.lrn(pool1,depth_radius=4,bias=1.0,alpha=0.001/9.0,beta=0.75,name='norm1')
 
 with tf.variable_scope('conv2') as scope:
 	conv2_kernel=truncated_normal_var(name='conv2_kernel',shape=[5,5,64,64],dtype=tf.float32)
@@ -109,7 +117,9 @@ with tf.variable_scope('conv2') as scope:
 pool_size=[1,3,3,1]
 strides=[1,2,2,1]
 pool2=tf.nn.max_pool(relu_conv2,ksize=pool_size,strides=strides,padding='SAME',name='pool_layer2')
-norm2=tf.nn.lrn(pool2,depth_radius=5,bias=2.0,alpha=1e-3,beta=0.75,name='norm2')
+#norm2=tf.nn.lrn(pool2,depth_radius=5,bias=2.0,alpha=1e-3,beta=0.75,name='norm2')
+norm2=tf.nn.lrn(pool2,depth_radius=4,bias=1.0,alpha=0.001/9.0,beta=0.75,name='norm2')
+
 reshaped_output=tf.reshape(norm2, [-1, 8*8*64])
 reshaped_dim=reshaped_output.get_shape()[1].value
 
@@ -128,16 +138,17 @@ full_layer2=tf.nn.dropout(full_layer2,keep_prob)
 #with tf.variable_scope('full3') as scope:
 full_weight3=truncated_normal_var(name='full_mult3',shape=[192,IMAGE_TO_DISPLAY],dtype=tf.float32)
 full_bias3=zero_var(name='full_bias3',shape=[IMAGE_TO_DISPLAY],dtype=tf.float32)
-final_output=tf.add(tf.matmul(full_layer2,full_weight3),full_bias3)
-#final_output=tf.nn.softmax(final_output)
-#cross_entropy = -tf.reduce_sum(labels*tf.log(tf.clip_by_value(final_output,1e-10,1.0)))
-cross_entropy=tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=final_output,labels=labels),name='cross_entropy')
+final_output=tf.add(tf.matmul(full_layer2,full_weight3),full_bias3,name='final_output')
+
+logits=tf.identity(final_output,name='logits')
+
+cross_entropy=tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits,labels=labels),name='cross_entropy')
 #train_step=tf.train.AdamOptimizer(LEARNING_RATE).minimize(cross_entropy)
-generation_run = tf.Variable(0, trainable=False)
-model_learning_rate=tf.train.exponential_decay(LEARNING_RATE,generation_run,NUM_GENS_TO_WAIT,LEARNING_RATE_DECAY,staircase=True)
+generation_run = tf.Variable(0, trainable=False,name='generation_run')
+model_learning_rate=tf.train.exponential_decay(LEARNING_RATE,generation_run,NUM_GENS_TO_WAIT,LEARNING_RATE_DECAY,staircase=True,name='model_learning_rate')
 train_step=tf.train.GradientDescentOptimizer(LEARNING_RATE).minimize(cross_entropy)
-correct_prediction=tf.equal(tf.argmax(final_output,1),tf.argmax(labels,1))
-accuracy=tf.reduce_mean(tf.cast(correct_prediction,tf.float32))
+correct_prediction=tf.equal(tf.argmax(final_output,1),tf.argmax(labels,1),name='correct_prediction')
+accuracy=tf.reduce_mean(tf.cast(correct_prediction,tf.float32),name='accuracy')
 
 
 epochs_completed=0
@@ -172,7 +183,7 @@ with tf.Session() as sess:
 		#return x_train[start:end], y_train[start:end]
 		x_output=updateImage(x_train[start:end],True)
 		
-		return x_output,y_train[start:end]		
+		return x_output,y_train[start:end]
 
 
 
