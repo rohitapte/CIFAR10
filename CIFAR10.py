@@ -4,6 +4,9 @@ from sklearn import preprocessing
 import tensorflow as tf
 import random
 import math
+import os
+from six.moves import urllib
+import tarfile
 
 NUM_FILE_BATCHES=5
 
@@ -18,8 +21,24 @@ BATCH_SIZE = 500
 VALIDATION_SIZE = 0
 IMAGE_TO_DISPLAY = 10
 
+#first download the data
+data_dir='data'
+if not os.path.exists(data_dir):
+	os.makedirs(data_dir)
+cifar10_url='https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
+
+data_file=os.path.join(data_dir, 'cifar-10-binary.tar.gz')
+if os.path.isfile(data_file):
+	pass
+else:
+	def progress(block_num, block_size, total_size):
+		progress_info = [cifar10_url, float(block_num * block_size) / float(total_size) * 100.0]
+		print('\r Downloading {} - {:.2f}%'.format(*progress_info), end="")
+	filepath, _ = urllib.request.urlretrieve(cifar10_url, data_file, progress)
+	tarfile.open(filepath, 'r:gz').extractall(data_dir)
+
 #with open('../data/CIFAR10/batches.meta',mode='rb') as file:
-with open('data/batches.meta',mode='rb') as file:
+with open('data/cifar-10-batches-py/batches.meta',mode='rb') as file:
 	batch=pickle.load(file,encoding='latin1')
 label_names=batch['label_names']
 
@@ -35,7 +54,7 @@ x_train=np.zeros(shape=(0,32,32,3))
 train_labels=[]
 for i in range(1,NUM_FILE_BATCHES+1):
 	#ft,lb=load_cifar10data('../data/CIFAR10/data_batch_'+str(i))
-	ft,lb=load_cifar10data('data/data_batch_'+str(i))
+	ft,lb=load_cifar10data('data/cifar-10-batches-py/data_batch_'+str(i))
 	x_train=np.vstack((x_train,ft))
 	train_labels.extend(lb)
 
@@ -46,7 +65,7 @@ lb.fit(unique_labels)
 y_train=lb.transform(train_labels)
 
 #x_test,test_labels=load_cifar10data('../data/CIFAR10/test_batch')
-x_test_data,test_labels=load_cifar10data('data/test_batch')
+x_test_data,test_labels=load_cifar10data('data/cifar-10-batches-py/test_batch')
 y_test=lb.transform(test_labels)
 
 #---------------------------------------------------
