@@ -7,6 +7,7 @@ import os
 from six.moves import urllib
 import tarfile
 import tensorflow as tf
+from tensorflow.contrib import learn
 
 NUM_FILE_BATCHES=5
 
@@ -110,7 +111,7 @@ pool_size=[1,3,3,1]
 strides=[1,2,2,1]
 pool1=tf.nn.max_pool(relu_conv1,ksize=pool_size,strides=strides,padding='SAME',name='pool_layer1')
 norm1=tf.nn.lrn(pool1,depth_radius=5,bias=2.0,alpha=1e-3,beta=0.75,name='norm1')
-#norm1=tf.nn.lrn(pool1,depth_radius=4,bias=1.0,alpha=0.001/9.0,beta=0.75,name='norm1')
+norm1 = learn.ops.dropout(norm1, dropout)
 
 with tf.variable_scope('conv2') as scope:
 	conv2_kernel=truncated_normal_var(name='conv2_kernel',shape=[5,5,64,64],dtype=tf.float32)
@@ -124,7 +125,7 @@ pool_size=[1,3,3,1]
 strides=[1,2,2,1]
 pool2=tf.nn.max_pool(relu_conv2,ksize=pool_size,strides=strides,padding='SAME',name='pool_layer2')
 norm2=tf.nn.lrn(pool2,depth_radius=5,bias=2.0,alpha=1e-3,beta=0.75,name='norm2')
-#norm2=tf.nn.lrn(pool2,depth_radius=4,bias=1.0,alpha=0.001/9.0,beta=0.75,name='norm2')
+norm1 = learn.ops.dropout(norm1, dropout)
 
 reshaped_output=tf.reshape(norm2, [-1, 8*8*64])
 reshaped_dim=reshaped_output.get_shape()[1].value
