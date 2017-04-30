@@ -1,12 +1,12 @@
 import numpy as np
 import pickle
 from sklearn import preprocessing
-import tensorflow as tf
 import random
 import math
 import os
 from six.moves import urllib
 import tarfile
+import tensorflow as tf
 
 NUM_FILE_BATCHES=5
 
@@ -68,20 +68,7 @@ y_train=lb.transform(train_labels)
 x_test_data,test_labels=load_cifar10data('data/cifar-10-batches-py/test_batch')
 y_test=lb.transform(test_labels)
 
-#---------------------------------------------------
-#min_value=np.amin(x_train)
-#max_value=np.amax(x_train)
-#x_train=(x_train-min_value)/(max_value-min_value)
-#x_test=(x_test-min_value)/(max_value-min_value)
-#mean=np.mean(x_train)
-#stddev=np.std(x_train)
-#x_train=(x_train-mean)/stddev
-#x_test=(x_test-mean)/stddev
-#---------------------------------------------------
-
 def updateImage(x_train_data,distort=True):
-	#global mean
-	#global stddev
 	x_temp=x_train_data.copy()
 	x_output=np.zeros(shape=(0,32,32,3))
 	for i in range(0,x_temp.shape[0]):
@@ -122,8 +109,8 @@ with tf.variable_scope('conv1') as scope:
 pool_size=[1,3,3,1]
 strides=[1,2,2,1]
 pool1=tf.nn.max_pool(relu_conv1,ksize=pool_size,strides=strides,padding='SAME',name='pool_layer1')
-#norm1=tf.nn.lrn(pool1,depth_radius=5,bias=2.0,alpha=1e-3,beta=0.75,name='norm1')
-norm1=tf.nn.lrn(pool1,depth_radius=4,bias=1.0,alpha=0.001/9.0,beta=0.75,name='norm1')
+norm1=tf.nn.lrn(pool1,depth_radius=5,bias=2.0,alpha=1e-3,beta=0.75,name='norm1')
+#norm1=tf.nn.lrn(pool1,depth_radius=4,bias=1.0,alpha=0.001/9.0,beta=0.75,name='norm1')
 
 with tf.variable_scope('conv2') as scope:
 	conv2_kernel=truncated_normal_var(name='conv2_kernel',shape=[5,5,64,64],dtype=tf.float32)
@@ -136,26 +123,26 @@ with tf.variable_scope('conv2') as scope:
 pool_size=[1,3,3,1]
 strides=[1,2,2,1]
 pool2=tf.nn.max_pool(relu_conv2,ksize=pool_size,strides=strides,padding='SAME',name='pool_layer2')
-#norm2=tf.nn.lrn(pool2,depth_radius=5,bias=2.0,alpha=1e-3,beta=0.75,name='norm2')
-norm2=tf.nn.lrn(pool2,depth_radius=4,bias=1.0,alpha=0.001/9.0,beta=0.75,name='norm2')
+norm2=tf.nn.lrn(pool2,depth_radius=5,bias=2.0,alpha=1e-3,beta=0.75,name='norm2')
+#norm2=tf.nn.lrn(pool2,depth_radius=4,bias=1.0,alpha=0.001/9.0,beta=0.75,name='norm2')
 
 reshaped_output=tf.reshape(norm2, [-1, 8*8*64])
 reshaped_dim=reshaped_output.get_shape()[1].value
 
 #with tf.variable_scope('full1') as scope:
-full_weight1=truncated_normal_var(name='full_mult1',shape=[reshaped_dim,384],dtype=tf.float32)
-full_bias1=zero_var(name='full_bias1',shape=[384],dtype=tf.float32)
+full_weight1=truncated_normal_var(name='full_mult1',shape=[reshaped_dim,1024],dtype=tf.float32)
+full_bias1=zero_var(name='full_bias1',shape=[1024],dtype=tf.float32)
 full_layer1=tf.nn.relu(tf.add(tf.matmul(reshaped_output,full_weight1),full_bias1))
 full_layer1=tf.nn.dropout(full_layer1,keep_prob)
 
 #with tf.variable_scope('full2') as scope:
-full_weight2=truncated_normal_var(name='full_mult2',shape=[384, 192],dtype=tf.float32)
-full_bias2=zero_var(name='full_bias2',shape=[192],dtype=tf.float32)
+full_weight2=truncated_normal_var(name='full_mult2',shape=[1024, 256],dtype=tf.float32)
+full_bias2=zero_var(name='full_bias2',shape=[256],dtype=tf.float32)
 full_layer2=tf.nn.relu(tf.add(tf.matmul(full_layer1,full_weight2),full_bias2))
 full_layer2=tf.nn.dropout(full_layer2,keep_prob)
 
 #with tf.variable_scope('full3') as scope:
-full_weight3=truncated_normal_var(name='full_mult3',shape=[192,IMAGE_TO_DISPLAY],dtype=tf.float32)
+full_weight3=truncated_normal_var(name='full_mult3',shape=[256,IMAGE_TO_DISPLAY],dtype=tf.float32)
 full_bias3=zero_var(name='full_bias3',shape=[IMAGE_TO_DISPLAY],dtype=tf.float32)
 final_output=tf.add(tf.matmul(full_layer2,full_weight3),full_bias3,name='final_output')
 
