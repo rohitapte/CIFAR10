@@ -124,7 +124,7 @@ pool_size=[1,3,3,1]
 strides=[1,2,2,1]
 pool2=tf.nn.max_pool(relu_conv2,ksize=pool_size,strides=strides,padding='SAME',name='pool_layer2')
 norm2=tf.nn.lrn(pool2,depth_radius=5,bias=2.0,alpha=1e-3,beta=0.75,name='norm2')
-norm1 = tf.nn.dropout(norm1, keep_prob)
+norm2 = tf.nn.dropout(norm2, keep_prob)
 
 reshaped_output=tf.reshape(norm2, [-1, 8*8*64])
 reshaped_dim=reshaped_output.get_shape()[1].value
